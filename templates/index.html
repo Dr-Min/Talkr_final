@@ -118,7 +118,7 @@
         cursor: pointer;
         font-family: 'Noto Sans KR', sans-serif;
       }
-      #voice-btn {
+     #voice-btn {
         width: 60px;
         height: 60px;
         border-radius: 50%;
@@ -139,10 +139,16 @@
         width: 24px;
         height: 24px;
         fill: white;
-        transition: transform 0.3s ease;
+        transition: transform 0.3s ease, fill 0.3s ease;
       }
       #voice-btn.active svg {
         animation: rotate 2s linear infinite;
+      }
+      #voice-btn.active {
+  background-color: #4caf50;
+      }
+      #voice-btn.active svg {
+  animation: rotateAndChangeColor 2s linear infinite;
       }
       @keyframes rotate {
         from {
@@ -191,6 +197,19 @@
         0%, 80%, 100% { opacity: 0; }
         40% { opacity: 1; }
       }
+      @keyframes rotateAndChangeColor {
+  0% {
+    transform: rotate(0deg);
+    fill: white;
+  }
+  50% {
+    fill: #ff4444;
+  }
+  100% {
+    transform: rotate(360deg);
+    fill: white;
+  }
+}
     </style>
   </head>
   <body>
