@@ -4,16 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TalKR</title>
-    <link
-      href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap"
-      rel="stylesheet"
-    />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
     <style>
       body,
       html {
         margin: 0;
         padding: 0;
-        font-family: "Noto Sans KR", sans-serif;
+        font-family: 'Noto Sans KR', sans-serif;
         height: 100%;
         background-color: #f1f1f1;
       }
@@ -27,16 +24,24 @@
       }
       .header {
         background-color: white;
-        padding: 10px;
-        text-align: left;
+        padding: 20px 10px;
+        text-align: center;
         border-bottom: 1px solid #e0e0e0;
       }
       .header h2 {
         margin: 0;
         font-weight: 700;
+        font-size: 28px;
+        letter-spacing: 2px;
+        background: linear-gradient(45deg, #2c3e50, #3498db);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
       }
       .header h2 span.green {
-        color: #4caf50;
+        background: linear-gradient(45deg, #27ae60, #2ecc71);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
       }
       .chat-container {
         flex: 1;
@@ -69,16 +74,16 @@
       .user-message .message-bubble {
         background-color: #4caf50;
         color: white;
-        box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1),
-          inset -2px -2px 5px rgba(0, 0, 0, 0.1),
-          inset 2px 2px 5px rgba(255, 255, 255, 0.3);
+        box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1), 
+                    inset -2px -2px 5px rgba(0, 0, 0, 0.1),
+                    inset 2px 2px 5px rgba(255, 255, 255, 0.3);
       }
       .bot-message .message-bubble {
         background-color: #f1f1f1;
         color: black;
         box-shadow: -2px 2px 5px rgba(0, 0, 0, 0.1),
-          inset 2px -2px 5px rgba(0, 0, 0, 0.1),
-          inset -2px 2px 5px rgba(255, 255, 255, 0.3);
+                    inset 2px -2px 5px rgba(0, 0, 0, 0.1),
+                    inset -2px 2px 5px rgba(255, 255, 255, 0.3);
       }
       .translation {
         font-size: 0.9em;
@@ -94,9 +99,16 @@
       }
       .input-container {
         display: flex;
+        flex-direction: column;
+        align-items: center;
         padding: 10px;
         background-color: white;
         border-top: 1px solid #e0e0e0;
+      }
+      .text-input-container {
+        display: flex;
+        width: 100%;
+        margin-top: 10px;
       }
       #user-input {
         flex: 1;
@@ -104,7 +116,7 @@
         border: none;
         border-radius: 20px;
         background-color: #f1f1f1;
-        font-family: "Noto Sans KR", sans-serif;
+        font-family: 'Noto Sans KR', sans-serif;
       }
       #send-btn {
         background-color: transparent;
@@ -112,15 +124,24 @@
         color: #4caf50;
         padding: 10px;
         cursor: pointer;
-        font-family: "Noto Sans KR", sans-serif;
+        font-family: 'Noto Sans KR', sans-serif;
       }
       #voice-btn {
-        background-color: transparent;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background-color: #ff4444;
         border: none;
-        color: #4caf50;
-        padding: 10px;
+        color: white;
+        font-size: 24px;
         cursor: pointer;
-        margin-right: 5px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        transition: background-color 0.3s;
+      }
+      #voice-btn:hover {
+        background-color: #ff6666;
       }
       .translate-btn {
         background-color: transparent;
@@ -131,23 +152,23 @@
         font-size: 0.8em;
         align-self: flex-start;
         margin-top: 5px;
-        font-family: "Noto Sans KR", sans-serif;
+        font-family: 'Noto Sans KR', sans-serif;
       }
       .loading {
         display: flex;
         justify-content: center;
         align-items: center;
-        margin-bottom: 10px;
+        padding: 10px;
       }
       .loading-dots {
         display: flex;
       }
       .loading-dots span {
-        width: 10px;
-        height: 10px;
+        width: 8px;
+        height: 8px;
         border-radius: 50%;
         background-color: #4caf50;
-        margin: 0 5px;
+        margin: 0 3px;
         opacity: 0;
         animation: loadingDots 1.4s infinite ease-in-out both;
       }
@@ -158,14 +179,8 @@
         animation-delay: -0.16s;
       }
       @keyframes loadingDots {
-        0%,
-        80%,
-        100% {
-          opacity: 0;
-        }
-        40% {
-          opacity: 1;
-        }
+        0%, 80%, 100% { opacity: 0; }
+        40% { opacity: 1; }
       }
     </style>
   </head>
@@ -179,8 +194,14 @@
       </div>
       <div class="input-container">
         <button id="voice-btn">🎤</button>
-        <input type="text" id="user-input" placeholder="Type your message..." />
-        <button id="send-btn">Send</button>
+        <div class="text-input-container">
+          <input
+            type="text"
+            id="user-input"
+            placeholder="Type your message..."
+          />
+          <button id="send-btn">Send</button>
+        </div>
       </div>
     </div>
 
@@ -232,7 +253,7 @@
           }
           recognition.start();
           isListening = true;
-          voiceBtn.textContent = "⏹️";
+          voiceBtn.style.backgroundColor = "#ff0000";
           silenceTimer = setTimeout(stopListening, 5000);
         }
 
@@ -241,7 +262,7 @@
             recognition.stop();
           }
           isListening = false;
-          voiceBtn.textContent = "🎤";
+          voiceBtn.style.backgroundColor = "#ff4444";
           clearTimeout(silenceTimer);
         }
 
@@ -274,7 +295,7 @@
             currentAudio.play();
             currentAudio.onended = function () {
               currentAudio = null;
-              voiceBtn.textContent = "🎤";
+              voiceBtn.style.backgroundColor = "#ff4444";
             };
           }
 
@@ -282,8 +303,11 @@
         }
 
         function addLoadingAnimation() {
+          const messageDiv = document.createElement("div");
+          messageDiv.className = "message bot-message";
+
           const loadingDiv = document.createElement("div");
-          loadingDiv.className = "loading";
+          loadingDiv.className = "message-bubble loading";
           loadingDiv.innerHTML = `
             <div class="loading-dots">
               <span></span>
@@ -291,9 +315,10 @@
               <span></span>
             </div>
           `;
-          chatContainer.appendChild(loadingDiv);
+          messageDiv.appendChild(loadingDiv);
+          chatContainer.appendChild(messageDiv);
           chatContainer.scrollTop = chatContainer.scrollHeight;
-          return loadingDiv;
+          return messageDiv;
         }
 
         function removeLoadingAnimation(loadingDiv) {
@@ -301,10 +326,9 @@
         }
 
         function translateMessage(message, messageDiv) {
-          const existingTranslation = messageDiv.querySelector(".translation");
+          const existingTranslation = messageDiv.querySelector('.translation');
           if (existingTranslation) {
-            existingTranslation.style.display =
-              existingTranslation.style.display === "none" ? "block" : "none";
+            existingTranslation.style.display = existingTranslation.style.display === 'none' ? 'block' : 'none';
             return;
           }
 
@@ -322,7 +346,7 @@
                 translationDiv.className = "translation";
                 translationDiv.textContent = data.translation;
                 messageDiv.appendChild(translationDiv);
-                translationDiv.style.display = "block"; // 번역을 즉시 표시합니다
+                translationDiv.style.display = 'block';
                 chatContainer.scrollTop = chatContainer.scrollHeight;
               } else {
                 alert("An error occurred during translation.");
@@ -379,7 +403,7 @@
           if (currentAudio) {
             currentAudio.pause();
             currentAudio = null;
-            voiceBtn.textContent = "🎤";
+            voiceBtn.style.backgroundColor = "#ff4444";
           } else if (isListening) {
             stopListening();
           } else {
