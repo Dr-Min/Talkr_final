@@ -420,4 +420,13 @@
             currentAudio = null;
             voiceBtn.style.backgroundColor = "#ff4444";
             voiceBtn.classList.remove("active");
-          } else if (is
+          } else if (isListening) {
+            stopListening();
+          } else {
+            startListening();
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
