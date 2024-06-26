@@ -118,7 +118,7 @@
         cursor: pointer;
         font-family: 'Noto Sans KR', sans-serif;
       }
-     #voice-btn {
+      #voice-btn {
         width: 60px;
         height: 60px;
         border-radius: 50%;
@@ -141,21 +141,23 @@
         fill: white;
         transition: transform 0.3s ease, fill 0.3s ease;
       }
-      #voice-btn.active svg {
-        animation: rotate 2s linear infinite;
-      }
       #voice-btn.active {
-  background-color: #4caf50;
+        background-color: #4caf50;
       }
       #voice-btn.active svg {
-  animation: rotateAndChangeColor 2s linear infinite;
+        animation: rotateAndChangeColor 2s linear infinite;
       }
-      @keyframes rotate {
-        from {
+      @keyframes rotateAndChangeColor {
+        0% {
           transform: rotate(0deg);
+          fill: white;
         }
-        to {
+        50% {
+          fill: #ff4444;
+        }
+        100% {
           transform: rotate(360deg);
+          fill: white;
         }
       }
       .translate-btn {
@@ -197,19 +199,6 @@
         0%, 80%, 100% { opacity: 0; }
         40% { opacity: 1; }
       }
-      @keyframes rotateAndChangeColor {
-  0% {
-    transform: rotate(0deg);
-    fill: white;
-  }
-  50% {
-    fill: #ff4444;
-  }
-  100% {
-    transform: rotate(360deg);
-    fill: white;
-  }
-}
     </style>
   </head>
   <body>
@@ -238,214 +227,230 @@
     </div>
 
     <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        const chatContainer = document.getElementById("chat-container");
-        const userInput = document.getElementById("user-input");
-        const sendBtn = document.getElementById("send-btn");
-        const voiceBtn = document.getElementById("voice-btn");
-
-        let recognition;
-        let isListening = false;
-        let silenceTimer;
-        let currentAudio = null;
-
-        function setupSpeechRecognition() {
-          recognition = new (window.SpeechRecognition ||
-            window.webkitSpeechRecognition)();
-          recognition.lang = "ko-KR";
-          recognition.interimResults = true;
-          recognition.continuous = true;
-
-          recognition.onresult = function (event) {
-            clearTimeout(silenceTimer);
-            const result = event.results[event.results.length - 1];
-            userInput.value = result[0].transcript;
-            if (result.isFinal) {
-              sendMessage(userInput.value.trim());
-              stopListening();
-            } else {
-              silenceTimer = setTimeout(stopListening, 5000);
-            }
-          };
-
-          recognition.onend = function () {
-            if (isListening) {
-              recognition.start();
-            }
-          };
-        }
-
-        function startListening() {
-          if (currentAudio) {
-            currentAudio.pause();
-            currentAudio = null;
-          }
-          if (!recognition) {
-            setupSpeechRecognition();
-          }
-          recognition.start();
-          isListening = true;
-          voiceBtn.style.backgroundColor = "#ff0000";
-          voiceBtn.classList.add("active");
-          silenceTimer = setTimeout(stopListening, 5000);
-        }
-
-        function stopListening() {
-          if (recognition) {
-            recognition.stop();
-          }
-          isListening = false;
-          voiceBtn.style.backgroundColor = "#ff4444";
-          voiceBtn.classList.remove("active");
-          clearTimeout(silenceTimer);
-        }
-
-        function addMessage(message, isUser, audioData) {
-          const messageDiv = document.createElement("div");
-          messageDiv.className = `message ${
-            isUser ? "user-message" : "bot-message"
-          }`;
-
-          const messageBubble = document.createElement("div");
-          messageBubble.className = "message-bubble";
-          messageBubble.textContent = message;
-
-          messageDiv.appendChild(messageBubble);
-
-          if (!isUser) {
-            const translateBtn = document.createElement("button");
-            translateBtn.className = "translate-btn";
-            translateBtn.textContent = "Translate";
-            translateBtn.onclick = function () {
-              translateMessage(message, messageDiv);
-            };
-            messageDiv.appendChild(translateBtn);
-          }
-
-          chatContainer.appendChild(messageDiv);
-
-          if (!isUser && audioData) {
-            currentAudio = new Audio("data:audio/mp3;base64," + audioData);
-            currentAudio.play();
-            currentAudio.onended = function () {
-              currentAudio = null;
-              voiceBtn.style.backgroundColor = "#ff4444";
-            };
-          }
-
-          chatContainer.scrollTop = chatContainer.scrollHeight;
-        }
-
-        function addLoadingAnimation() {
-          const messageDiv = document.createElement("div");
-          messageDiv.className = "message bot-message";
-
-          const loadingDiv = document.createElement("div");
-          loadingDiv.className = "message-bubble loading";
-          loadingDiv.innerHTML = `
-            <div class="loading-dots">
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
-          `;
-          messageDiv.appendChild(loadingDiv);
-          chatContainer.appendChild(messageDiv);
-          chatContainer.scrollTop = chatContainer.scrollHeight;
-          return messageDiv;
-        }
-
-        function removeLoadingAnimation(loadingDiv) {
-          chatContainer.removeChild(loadingDiv);
-        }
-
-        function translateMessage(message, messageDiv) {
-          const existingTranslation = messageDiv.querySelector('.translation');
-          if (existingTranslation) {
-            existingTranslation.style.display = existingTranslation.style.display === 'none' ? 'block' : 'none';
-            return;
-          }
-
-          fetch("/translate", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ text: message }),
-          })
-            .then((response) => response.json())
-            .then((data) => {
-              if (data.translation) {
-                const translationDiv = document.createElement("div");
-                translationDiv.className = "translation";
-                translationDiv.textContent = data.translation;
-                messageDiv.appendChild(translationDiv);
-                translationDiv.style.display = 'block';
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-              } else {
-                alert("An error occurred during translation.");
+        document.addEventListener("DOMContentLoaded", function () {
+          const chatContainer = document.getElementById("chat-container");
+          const userInput = document.getElementById("user-input");
+          const sendBtn = document.getElementById("send-btn");
+          const voiceBtn = document.getElementById("voice-btn");
+  
+          let recognition;
+          let isListening = false;
+          let silenceTimer;
+          let currentAudio = null;
+          let restartTimer;
+  
+          function setupSpeechRecognition() {
+            recognition = new (window.SpeechRecognition ||
+              window.webkitSpeechRecognition)();
+            recognition.lang = "ko-KR";
+            recognition.interimResults = true;
+            recognition.continuous = false;
+  
+            recognition.onresult = function (event) {
+              clearTimeout(silenceTimer);
+              const result = event.results[event.results.length - 1];
+              userInput.value = result[0].transcript;
+              if (result.isFinal) {
+                sendMessage(userInput.value.trim());
               }
-            })
-            .catch((error) => {
-              console.error("Translation error:", error);
-              alert("An error occurred during translation.");
-            });
-        }
-
-        function sendMessage(message) {
-          if (message) {
-            addMessage(message, true);
-            userInput.value = "";
-
-            const loadingDiv = addLoadingAnimation();
-
-            fetch("/chat", {
+              restartRecognition();
+            };
+  
+            recognition.onend = function () {
+              if (isListening) {
+                restartRecognition();
+              } else {
+                voiceBtn.classList.remove("active");
+              }
+            };
+  
+            recognition.onerror = function (event) {
+              console.error("Speech recognition error", event.error);
+              if (isListening) {
+                restartRecognition();
+              }
+            };
+          }
+  
+          function startListening() {
+            if (currentAudio) {
+              currentAudio.pause();
+              currentAudio = null;
+            }
+            if (!recognition) {
+              setupSpeechRecognition();
+            }
+            isListening = true;
+            voiceBtn.classList.add("active");
+            recognition.start();
+          }
+  
+          function stopListening() {
+            isListening = false;
+            voiceBtn.classList.remove("active");
+            if (recognition) {
+              recognition.stop();
+            }
+            clearTimeout(restartTimer);
+          }
+  
+          function restartRecognition() {
+            clearTimeout(restartTimer);
+            restartTimer = setTimeout(() => {
+              if (isListening) {
+                recognition.stop();
+                recognition.start();
+              }
+            }, 50);
+          }
+  
+          function addMessage(message, isUser, audioData) {
+            const messageDiv = document.createElement("div");
+            messageDiv.className = `message ${
+              isUser ? "user-message" : "bot-message"
+            }`;
+  
+            const messageBubble = document.createElement("div");
+            messageBubble.className = "message-bubble";
+            messageBubble.textContent = message;
+  
+            messageDiv.appendChild(messageBubble);
+  
+            if (!isUser) {
+              const translateBtn = document.createElement("button");
+              translateBtn.className = "translate-btn";
+              translateBtn.textContent = "Translate";
+              translateBtn.onclick = function () {
+                translateMessage(message, messageDiv);
+              };
+              messageDiv.appendChild(translateBtn);
+            }
+  
+            chatContainer.appendChild(messageDiv);
+  
+            if (!isUser && audioData) {
+              currentAudio = new Audio("data:audio/mp3;base64," + audioData);
+              currentAudio.play();
+              currentAudio.onended = function () {
+                currentAudio = null;
+                voiceBtn.classList.remove("active");
+              };
+            }
+  
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+          }
+  
+          function addLoadingAnimation() {
+            const messageDiv = document.createElement("div");
+            messageDiv.className = "message bot-message";
+  
+            const loadingDiv = document.createElement("div");
+            loadingDiv.className = "message-bubble loading";
+            loadingDiv.innerHTML = `
+              <div class="loading-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            `;
+            messageDiv.appendChild(loadingDiv);
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            return messageDiv;
+          }
+  
+          function removeLoadingAnimation(loadingDiv) {
+            chatContainer.removeChild(loadingDiv);
+          }
+  
+          function translateMessage(message, messageDiv) {
+            const existingTranslation = messageDiv.querySelector('.translation');
+            if (existingTranslation) {
+              existingTranslation.style.display = existingTranslation.style.display === 'none' ? 'block' : 'none';
+              return;
+            }
+  
+            fetch("/translate", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify({ message: message }),
+              body: JSON.stringify({ text: message }),
             })
               .then((response) => response.json())
               .then((data) => {
-                removeLoadingAnimation(loadingDiv);
-                if (data.success) {
-                  addMessage(data.message, false, data.audio);
+                if (data.translation) {
+                  const translationDiv = document.createElement("div");
+                  translationDiv.className = "translation";
+                  translationDiv.textContent = data.translation;
+                  messageDiv.appendChild(translationDiv);
+                  translationDiv.style.display = 'block';
+                  chatContainer.scrollTop = chatContainer.scrollHeight;
                 } else {
-                  addMessage("An error occurred. Please try again.", false);
+                  alert("An error occurred during translation.");
                 }
               })
               .catch((error) => {
-                removeLoadingAnimation(loadingDiv);
-                console.error("Error:", error);
-                addMessage("A network error occurred.", false);
+                console.error("Translation error:", error);
+                alert("An error occurred during translation.");
               });
           }
-        }
-
-        sendBtn.addEventListener("click", () =>
-          sendMessage(userInput.value.trim())
-        );
-
-        userInput.addEventListener("keypress", function (e) {
-          if (e.key === "Enter") {
-            sendMessage(userInput.value.trim());
+  
+          function sendMessage(message) {
+            if (message) {
+              addMessage(message, true);
+              userInput.value = "";
+  
+              const loadingDiv = addLoadingAnimation();
+  
+              fetch("/chat", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ message: message }),
+              })
+                .then((response) => response.json())
+                .then((data) => {
+                  removeLoadingAnimation(loadingDiv);
+                  if (data.success) {
+                    addMessage(data.message, false, data.audio);
+                  } else {
+                    addMessage("An error occurred. Please try again.", false);
+                  }
+                })
+                .catch((error) => {
+                  removeLoadingAnimation(loadingDiv);
+                  console.error("Error:", error);
+                  addMessage("A network error occurred.", false);
+                });
+            }
           }
+  
+          sendBtn.addEventListener("click", () =>
+            sendMessage(userInput.value.trim())
+          );
+  
+          userInput.addEventListener("keypress", function (e) {
+            if (e.key === "Enter") {
+              sendMessage(userInput.value.trim());
+            }
+          });
+  
+          voiceBtn.addEventListener("click", function () {
+            if (currentAudio) {
+              currentAudio.pause();
+              currentAudio = null;
+              voiceBtn.classList.remove("active");
+            } else if (isListening) {
+              stopListening();
+            } else {
+              startListening();
+            }
+          });
         });
-
-        voiceBtn.addEventListener("click", function () {
-          if (currentAudio) {
-            currentAudio.pause();
-            currentAudio = null;
-            voiceBtn.style.backgroundColor = "#ff4444";
-            voiceBtn.classList.remove("active");
-          } else if (isListening) {
-            stopListening();
-          } else {
-            startListening();
-          }
-        });
-      });
-    </script>
+      </script>
+    </body>
+  </html>
   </body>
 </html>
