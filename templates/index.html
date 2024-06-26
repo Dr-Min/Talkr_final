@@ -1,15 +1,19 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TalKR</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
     <style>
       body,
       html {
         margin: 0;
         padding: 0;
-        font-family: Arial, sans-serif;
+        font-family: "Noto Sans KR", sans-serif;
         height: 100%;
         background-color: #f1f1f1;
       }
@@ -29,9 +33,10 @@
       }
       .header h2 {
         margin: 0;
+        font-weight: 700;
       }
       .header h2 span.green {
-        color: #4caf50; /* 사용자 말풍선과 같은 초록색 */
+        color: #4caf50;
       }
       .chat-container {
         flex: 1;
@@ -42,6 +47,7 @@
         margin-bottom: 10px;
         display: flex;
         flex-direction: column;
+        position: relative;
       }
       .user-message {
         align-items: flex-end;
@@ -53,14 +59,38 @@
         max-width: 70%;
         padding: 10px;
         border-radius: 20px;
+        position: relative;
+        transform: translateZ(0);
+        transition: transform 0.3s ease;
+      }
+      .message-bubble:hover {
+        transform: translateZ(10px);
       }
       .user-message .message-bubble {
         background-color: #4caf50;
         color: white;
+        box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1),
+          inset -2px -2px 5px rgba(0, 0, 0, 0.1),
+          inset 2px 2px 5px rgba(255, 255, 255, 0.3);
       }
       .bot-message .message-bubble {
         background-color: #f1f1f1;
         color: black;
+        box-shadow: -2px 2px 5px rgba(0, 0, 0, 0.1),
+          inset 2px -2px 5px rgba(0, 0, 0, 0.1),
+          inset -2px 2px 5px rgba(255, 255, 255, 0.3);
+      }
+      .translation {
+        font-size: 0.9em;
+        color: #ffffff;
+        margin-top: 5px;
+        padding: 10px;
+        background-color: rgba(0, 0, 0, 0.7);
+        border-radius: 10px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        display: none;
+        max-width: 70%;
+        word-wrap: break-word;
       }
       .input-container {
         display: flex;
@@ -74,6 +104,7 @@
         border: none;
         border-radius: 20px;
         background-color: #f1f1f1;
+        font-family: "Noto Sans KR", sans-serif;
       }
       #send-btn {
         background-color: transparent;
@@ -81,6 +112,7 @@
         color: #4caf50;
         padding: 10px;
         cursor: pointer;
+        font-family: "Noto Sans KR", sans-serif;
       }
       #voice-btn {
         background-color: transparent;
@@ -99,6 +131,41 @@
         font-size: 0.8em;
         align-self: flex-start;
         margin-top: 5px;
+        font-family: "Noto Sans KR", sans-serif;
+      }
+      .loading {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+      .loading-dots {
+        display: flex;
+      }
+      .loading-dots span {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background-color: #4caf50;
+        margin: 0 5px;
+        opacity: 0;
+        animation: loadingDots 1.4s infinite ease-in-out both;
+      }
+      .loading-dots span:nth-child(1) {
+        animation-delay: -0.32s;
+      }
+      .loading-dots span:nth-child(2) {
+        animation-delay: -0.16s;
+      }
+      @keyframes loadingDots {
+        0%,
+        80%,
+        100% {
+          opacity: 0;
+        }
+        40% {
+          opacity: 1;
+        }
       }
     </style>
   </head>
@@ -108,16 +175,12 @@
         <h2>Tal<span class="green">KR</span></h2>
       </div>
       <div id="chat-container" class="chat-container">
-        <!-- 채팅 메시지들이 여기에 추가됩니다 -->
+        <!-- Chat messages will be added here -->
       </div>
       <div class="input-container">
         <button id="voice-btn">🎤</button>
-        <input
-          type="text"
-          id="user-input"
-          placeholder="메시지를 입력하세요..."
-        />
-        <button id="send-btn">전송</button>
+        <input type="text" id="user-input" placeholder="Type your message..." />
+        <button id="send-btn">Send</button>
       </div>
     </div>
 
@@ -148,7 +211,7 @@
               sendMessage(userInput.value.trim());
               stopListening();
             } else {
-              silenceTimer = setTimeout(stopListening, 5000);
+              silenceTimer = setTimeout(stopListening, 1500);
             }
           };
 
@@ -197,9 +260,9 @@
           if (!isUser) {
             const translateBtn = document.createElement("button");
             translateBtn.className = "translate-btn";
-            translateBtn.textContent = "translate";
+            translateBtn.textContent = "Translate";
             translateBtn.onclick = function () {
-              translateMessage(message, messageBubble);
+              translateMessage(message, messageDiv);
             };
             messageDiv.appendChild(translateBtn);
           }
@@ -218,7 +281,33 @@
           chatContainer.scrollTop = chatContainer.scrollHeight;
         }
 
-        function translateMessage(message, messageBubble) {
+        function addLoadingAnimation() {
+          const loadingDiv = document.createElement("div");
+          loadingDiv.className = "loading";
+          loadingDiv.innerHTML = `
+            <div class="loading-dots">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+          `;
+          chatContainer.appendChild(loadingDiv);
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+          return loadingDiv;
+        }
+
+        function removeLoadingAnimation(loadingDiv) {
+          chatContainer.removeChild(loadingDiv);
+        }
+
+        function translateMessage(message, messageDiv) {
+          const existingTranslation = messageDiv.querySelector(".translation");
+          if (existingTranslation) {
+            existingTranslation.style.display =
+              existingTranslation.style.display === "none" ? "block" : "none";
+            return;
+          }
+
           fetch("/translate", {
             method: "POST",
             headers: {
@@ -229,14 +318,19 @@
             .then((response) => response.json())
             .then((data) => {
               if (data.translation) {
-                messageBubble.textContent = data.translation;
+                const translationDiv = document.createElement("div");
+                translationDiv.className = "translation";
+                translationDiv.textContent = data.translation;
+                messageDiv.appendChild(translationDiv);
+                translationDiv.style.display = "block"; // 번역을 즉시 표시합니다
+                chatContainer.scrollTop = chatContainer.scrollHeight;
               } else {
-                alert("번역 중 오류가 발생했습니다.");
+                alert("An error occurred during translation.");
               }
             })
             .catch((error) => {
               console.error("Translation error:", error);
-              alert("번역 중 오류가 발생했습니다.");
+              alert("An error occurred during translation.");
             });
         }
 
@@ -244,6 +338,8 @@
           if (message) {
             addMessage(message, true);
             userInput.value = "";
+
+            const loadingDiv = addLoadingAnimation();
 
             fetch("/chat", {
               method: "POST",
@@ -254,15 +350,17 @@
             })
               .then((response) => response.json())
               .then((data) => {
+                removeLoadingAnimation(loadingDiv);
                 if (data.success) {
                   addMessage(data.message, false, data.audio);
                 } else {
-                  addMessage("오류가 발생했습니다. 다시 시도해주세요.", false);
+                  addMessage("An error occurred. Please try again.", false);
                 }
               })
               .catch((error) => {
+                removeLoadingAnimation(loadingDiv);
                 console.error("Error:", error);
-                addMessage("네트워크 오류가 발생했습니다.", false);
+                addMessage("A network error occurred.", false);
               });
           }
         }
