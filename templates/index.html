@@ -139,6 +139,18 @@
         width: 24px;
         height: 24px;
         fill: white;
+        transition: transform 0.3s ease;
+      }
+      #voice-btn.active svg {
+        animation: rotate 2s linear infinite;
+      }
+      @keyframes rotate {
+        from {
+          transform: rotate(0deg);
+        }
+        to {
+          transform: rotate(360deg);
+        }
       }
       .translate-btn {
         background-color: transparent;
@@ -255,6 +267,7 @@
           recognition.start();
           isListening = true;
           voiceBtn.style.backgroundColor = "#ff0000";
+          voiceBtn.classList.add("active");
           silenceTimer = setTimeout(stopListening, 5000);
         }
 
@@ -264,6 +277,7 @@
           }
           isListening = false;
           voiceBtn.style.backgroundColor = "#ff4444";
+          voiceBtn.classList.remove("active");
           clearTimeout(silenceTimer);
         }
 
@@ -405,13 +419,5 @@
             currentAudio.pause();
             currentAudio = null;
             voiceBtn.style.backgroundColor = "#ff4444";
-          } else if (isListening) {
-            stopListening();
-          } else {
-            startListening();
-          }
-        });
-      });
-    </script>
-  </body>
-</html>
+            voiceBtn.classList.remove("active");
+          } else if (is
