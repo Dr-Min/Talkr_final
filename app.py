@@ -54,7 +54,7 @@ def start():
     )
     
     ai_message = response.choices[0].message.content
-    session['messages'].extend(messages + [{"role": "assistant", "content": ai_message}])
+    session['messages'] = messages + [{"role": "assistant", "content": ai_message}]
 
     speech_response = client.audio.speech.create(
         model="tts-1",
@@ -105,6 +105,11 @@ def set_level():
 def chat():
     user_message = request.json['message']
     messages = session.get('messages', [])
+    
+    # 마지막 메시지가 사용자의 메시지와 같다면 중복 방지
+    if messages and messages[-1]['role'] == 'user' and messages[-1]['content'] == user_message:
+        return jsonify({'message': '중복된 메시지입니다.', 'success': False}), 400
+    
     messages.append({"role": "user", "content": user_message})
     
     try:
