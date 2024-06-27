@@ -39,9 +39,72 @@ def home():
 
 @app.route('/start', methods=['POST'])
 def start():
+    # AI가 먼저 레벨을 물어보는 메시지 생성
+    system_message_content = """당신은 친근하고 유머러스한 AI 한국어 튜터 '민쌤'입니다. 
+    사용자의 한국어 실력을 TOPIK 기준 1급(초보)부터 6급(원어민)까지 물어보세요."""
+    
+    messages = [
+        {"role": "system", "content": system_message_content},
+        {"role": "user", "content": "한국어 학습을 시작합니다."}
+    ]
+    
+    response = client.chat.completions.create(
+        model="gpt-4-turbo",
+        messages=messages
+    )
+    
+    ai_message = response.choices[0].message.content
+
+    # TTS 생성
+    speech_response = client.audio.speech.create(
+        model="tts-1",
+        voice="alloy",
+        input=ai_message
+    )
+
+    # 오디오 데이터를 base64로 인코딩
+    audio_base64 = base64.b64encode(speech_response.content).decode('utf-8')
+
+    return jsonify({
+        'message': ai_message, 
+        'audio': audio_base64,
+        'success': True
+    })
+
+@app.route('/set_level', methods=['POST'])
+def set_level():
     level = request.json['level']
     session['level'] = level
-    return jsonify({'message': f'TOPIK {level}급 수준으로 대화를 시작합니다. 안녕하세요! 한국어 공부 시작해볼까요?'})
+    
+    # 레벨 설정 후 AI의 응답 생성
+    system_message_content = system_message['content'].format(level=level)
+    messages = [
+        {"role": "system", "content": system_message_content},
+        {"role": "user", "content": f"TOPIK {level}급 수준입니다."}
+    ]
+    
+    response = client.chat.completions.create(
+        model="gpt-4-turbo",
+        messages=messages
+    )
+    
+    ai_message = response.choices[0].message.content
+
+    # TTS 생성
+    speech_response = client.audio.speech.create(
+        model="tts-1",
+        voice="alloy",
+        input=ai_message
+    )
+
+    # 오디오 데이터를 base64로 인코딩
+    audio_base64 = base64.b64encode(speech_response.content).decode('utf-8')
+
+    return jsonify({
+        'message': ai_message, 
+        'audio': audio_base64,
+        'success': True
+    })
 
 @app.route('/chat', methods=['POST'])
 def chat():
