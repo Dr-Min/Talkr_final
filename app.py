@@ -39,12 +39,12 @@ def home():
 
 @app.route('/start', methods=['POST'])
 def start():
-    system_message_content = """당신은 친근하고 유머러스한 AI 한국어 튜터 '민쌤'입니다. 
-    사용자의 한국어 실력을 TOPIK 기준 1급(초보)부터 6급(원어민)까지 물어보세요. 
-    반드시 TOPIK 레벨을 물어보는 것으로 대화를 시작하세요."""
+    session['messages'] = []
+    system_msg = """당신은 친근하고 유머러스한 AI 한국어 튜터 '민쌤'입니다. 
+    사용자의 한국어 실력을 TOPIK 기준 1급(초보)부터 6급(원어민)까지 물어보세요."""
     
     messages = [
-        {"role": "system", "content": system_message_content},
+        {"role": "system", "content": system_msg},
         {"role": "user", "content": "한국어 학습을 시작합니다."}
     ]
     
@@ -54,15 +54,13 @@ def start():
     )
     
     ai_message = response.choices[0].message.content
+    session['messages'].extend(messages + [{"role": "assistant", "content": ai_message}])
 
-    # TTS 생성
     speech_response = client.audio.speech.create(
         model="tts-1",
         voice="alloy",
         input=ai_message
     )
-
-    # 오디오 데이터를 base64로 인코딩
     audio_base64 = base64.b64encode(speech_response.content).decode('utf-8')
 
     return jsonify({
@@ -76,12 +74,10 @@ def set_level():
     level = request.json['level']
     session['level'] = level
     
-    # 레벨 설정 후 AI의 응답 생성
-    system_message_content = system_message['content'].format(level=level)
-    messages = [
-        {"role": "system", "content": system_message_content},
-        {"role": "user", "content": f"TOPIK {level}급 수준입니다."}
-    ]
+    system_msg = system_message['content'].format(level=level)
+    messages = session.get('messages', [])
+    messages.append({"role": "system", "content": system_msg})
+    messages.append({"role": "user", "content": f"TOPIK {level}급 수준입니다."})
     
     response = client.chat.completions.create(
         model="gpt-4-turbo",
@@ -89,15 +85,14 @@ def set_level():
     )
     
     ai_message = response.choices[0].message.content
+    messages.append({"role": "assistant", "content": ai_message})
+    session['messages'] = messages
 
-    # TTS 생성
     speech_response = client.audio.speech.create(
         model="tts-1",
         voice="alloy",
         input=ai_message
     )
-
-    # 오디오 데이터를 base64로 인코딩
     audio_base64 = base64.b64encode(speech_response.content).decode('utf-8')
 
     return jsonify({
@@ -109,30 +104,24 @@ def set_level():
 @app.route('/chat', methods=['POST'])
 def chat():
     user_message = request.json['message']
-    level = session.get('level', '1')  # 기본값은 1급
+    messages = session.get('messages', [])
+    messages.append({"role": "user", "content": user_message})
     
     try:
-        system_message_content = system_message['content'].format(level=level)
-        messages = [
-            {"role": "system", "content": system_message_content},
-            {"role": "user", "content": user_message}
-        ]
-        
         response = client.chat.completions.create(
             model="gpt-4-turbo",
             messages=messages
         )
         
         ai_message = response.choices[0].message.content
+        messages.append({"role": "assistant", "content": ai_message})
+        session['messages'] = messages
 
-        # TTS 생성
         speech_response = client.audio.speech.create(
             model="tts-1",
             voice="alloy",
             input=ai_message
         )
-
-        # 오디오 데이터를 base64로 인코딩
         audio_base64 = base64.b64encode(speech_response.content).decode('utf-8')
 
         return jsonify({
