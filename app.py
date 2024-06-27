@@ -1,11 +1,10 @@
-from flask import Flask, render_template, request, jsonify, session
+from flask import Flask, render_template, request, jsonify
 from openai import OpenAI
 from dotenv import load_dotenv
 import os
 import base64
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)  # 세션을 위한 비밀 키 설정
 
 # OpenAI 클라이언트 초기화
 load_dotenv()
@@ -28,105 +27,35 @@ system_message = {
 9. 질문과 추천의 비율을 4:6으로 유지하세요.
    예: "BTS 노래 들어봤어? (질문) / '봄날' 한번 들어봐. 한국어 공부하기 좋아. (추천)"
 10. 대화 중 한국 문화나 역사적 맥락이 필요한 표현이 나오면 간단히 설명해주세요.
-11. 필요하다고 판단되면 자연스럽게 대화를 마무리하세요.
-
-사용자의 TOPIK 레벨({level})에 맞는 난이도로 대화를 진행하세요."""
+11. 필요하다고 판단되면 자연스럽게 대화를 마무리하세요."""
 }
 
 @app.route('/')
 def home():
     return render_template('index.html')
 
-@app.route('/start', methods=['POST'])
-def start():
-    session['messages'] = []
-    system_msg = """당신은 친근하고 유머러스한 AI 한국어 튜터 '민쌤'입니다. 
-    사용자의 한국어 실력을 TOPIK 기준 1급(초보)부터 6급(원어민)까지 물어보세요."""
-    
-    messages = [
-        {"role": "system", "content": system_msg},
-        {"role": "user", "content": "한국어 학습을 시작합니다."}
-    ]
-    
-    response = client.chat.completions.create(
-        model="gpt-4-turbo",
-        messages=messages
-    )
-    
-    ai_message = response.choices[0].message.content
-    session['messages'] = messages + [{"role": "assistant", "content": ai_message}]
-
-    speech_response = client.audio.speech.create(
-        model="tts-1",
-        voice="alloy",
-        input=ai_message
-    )
-    audio_base64 = base64.b64encode(speech_response.content).decode('utf-8')
-
-    return jsonify({
-        'message': ai_message, 
-        'audio': audio_base64,
-        'success': True
-    })
-
-@app.route('/set_level', methods=['POST'])
-def set_level():
-    level = request.json['level']
-    session['level'] = level
-    
-    system_msg = system_message['content'].format(level=level)
-    messages = session.get('messages', [])
-    messages.append({"role": "system", "content": system_msg})
-    messages.append({"role": "user", "content": f"TOPIK {level}급 수준입니다."})
-    
-    response = client.chat.completions.create(
-        model="gpt-4-turbo",
-        messages=messages
-    )
-    
-    ai_message = response.choices[0].message.content
-    messages.append({"role": "assistant", "content": ai_message})
-    session['messages'] = messages
-
-    speech_response = client.audio.speech.create(
-        model="tts-1",
-        voice="alloy",
-        input=ai_message
-    )
-    audio_base64 = base64.b64encode(speech_response.content).decode('utf-8')
-
-    return jsonify({
-        'message': ai_message, 
-        'audio': audio_base64,
-        'success': True
-    })
-
 @app.route('/chat', methods=['POST'])
 def chat():
     user_message = request.json['message']
-    messages = session.get('messages', [])
-    
-    # 마지막 메시지가 사용자의 메시지와 같다면 중복 방지
-    if messages and messages[-1]['role'] == 'user' and messages[-1]['content'] == user_message:
-        return jsonify({'message': '중복된 메시지입니다.', 'success': False}), 400
-    
-    messages.append({"role": "user", "content": user_message})
     
     try:
+        messages = [system_message, {"role": "user", "content": user_message}]
+        
         response = client.chat.completions.create(
             model="gpt-4-turbo",
             messages=messages
         )
         
         ai_message = response.choices[0].message.content
-        messages.append({"role": "assistant", "content": ai_message})
-        session['messages'] = messages
 
+        # TTS 생성
         speech_response = client.audio.speech.create(
             model="tts-1",
             voice="alloy",
             input=ai_message
         )
+
+        # 오디오 데이터를 base64로 인코딩
         audio_base64 = base64.b64encode(speech_response.content).decode('utf-8')
 
         return jsonify({
