@@ -240,7 +240,7 @@
     </div>
 
     <script>
- document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", function () {
   const chatContainer = document.getElementById("chat-container");
   const userInput = document.getElementById("user-input");
   const sendBtn = document.getElementById("send-btn");
@@ -415,29 +415,6 @@
       });
   }
 
-  function setLevel(level) {
-    fetch("/set_level", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ level: level }),
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.success) {
-          addMessage(data.message, false, data.audio);
-          isLevelSelected = true;
-        } else {
-          addMessage("An error occurred. Please try again.", false);
-        }
-      })
-      .catch((error) => {
-        console.error("Error:", error);
-        addMessage("A network error occurred.", false);
-      });
-  }
-
   function sendMessage(message) {
     if (message) {
       addMessage(message, true);
@@ -445,30 +422,24 @@
 
       const loadingDiv = addLoadingAnimation();
 
-      if (!isLevelSelected && message.match(/^[1-6]$/)) {
-        removeLoadingAnimation(loadingDiv);
-        setLevel(parseInt(message));
-        return;
-      }
+      let endpoint = isLevelSelected ? "/chat" : "/set_level";
+      let body = isLevelSelected ? { message: message } : { level: message };
 
-      if (!isLevelSelected) {
-        removeLoadingAnimation(loadingDiv);
-        addMessage("Please select your TOPIK level first (1-6).", false);
-        return;
-      }
-
-      fetch("/chat", {
+      fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ message: message }),
+        body: JSON.stringify(body),
       })
         .then((response) => response.json())
         .then((data) => {
           removeLoadingAnimation(loadingDiv);
           if (data.success) {
             addMessage(data.message, false, data.audio);
+            if (!isLevelSelected && message.match(/^[1-6]$/)) {
+              isLevelSelected = true;
+            }
           } else {
             addMessage("An error occurred. Please try again.", false);
           }
@@ -505,6 +476,7 @@
 
   // 채팅 시작
   startChat();
+});
 });
     </script>
   </body>
