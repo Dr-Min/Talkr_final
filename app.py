@@ -39,9 +39,9 @@ def home():
 
 @app.route('/start', methods=['POST'])
 def start():
-    # AI가 먼저 레벨을 물어보는 메시지 생성
     system_message_content = """당신은 친근하고 유머러스한 AI 한국어 튜터 '민쌤'입니다. 
-    사용자의 한국어 실력을 TOPIK 기준 1급(초보)부터 6급(원어민)까지 물어보세요."""
+    사용자의 한국어 실력을 TOPIK 기준 1급(초보)부터 6급(원어민)까지 물어보세요. 
+    반드시 TOPIK 레벨을 물어보는 것으로 대화를 시작하세요."""
     
     messages = [
         {"role": "system", "content": system_message_content},
