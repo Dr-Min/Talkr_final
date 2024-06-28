@@ -247,21 +247,28 @@
   let recognition;
   let isListening = false;
   let currentAudio = null;
+  let finalTranscript = '';
+  let silenceTimer;
 
   function setupSpeechRecognition() {
-    recognition = new (window.SpeechRecognition ||
-      window.webkitSpeechRecognition)();
+    recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
     recognition.lang = "ko-KR";
     recognition.interimResults = true;
-    recognition.continuous = false;
+    recognition.continuous = true;
 
     recognition.onresult = function (event) {
-      const result = event.results[event.results.length - 1];
-      userInput.value = result[0].transcript;
-      if (result.isFinal) {
-        sendMessage(userInput.value.trim());
-        stopListening();
+      let interimTranscript = '';
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        } else {
+          interimTranscript += event.results[i][0].transcript;
+        }
       }
+      userInput.value = finalTranscript + interimTranscript;
+      
+      clearTimeout(silenceTimer);
+      silenceTimer = setTimeout(stopListening, 2000); // 2초 무음 후 종료
     };
 
     recognition.onend = function () {
@@ -269,6 +276,10 @@
         recognition.start();
       } else {
         voiceBtn.classList.remove("active");
+        if (finalTranscript) {
+          sendMessage(finalTranscript.trim());
+        }
+        finalTranscript = '';
       }
     };
 
@@ -289,12 +300,14 @@
     }
     isListening = true;
     voiceBtn.classList.add("active");
+    finalTranscript = '';
     recognition.start();
   }
 
   function stopListening() {
     isListening = false;
     voiceBtn.classList.remove("active");
+    clearTimeout(silenceTimer);
     if (recognition) {
       recognition.stop();
     }
@@ -302,9 +315,7 @@
 
   function addMessage(message, isUser, audioData) {
     const messageDiv = document.createElement("div");
-    messageDiv.className = `message ${
-      isUser ? "user-message" : "bot-message"
-    }`;
+    messageDiv.className = `message ${isUser ? "user-message" : "bot-message"}`;
 
     const messageBubble = document.createElement("div");
     messageBubble.className = "message-bubble";
@@ -436,9 +447,7 @@
     }
   }
 
-  sendBtn.addEventListener("click", () =>
-    sendMessage(userInput.value.trim())
-  );
+  sendBtn.addEventListener("click", () => sendMessage(userInput.value.trim()));
 
   userInput.addEventListener("keypress", function (e) {
     if (e.key === "Enter") {
