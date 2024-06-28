@@ -22,16 +22,39 @@ system_message = {
 "안녕! 오늘 기분은 어때? 요즘 즐겨 듣는 음악이나 좋아하는 가수 있으면 얘기해줘."
 "안녕! 오늘 하루 어땠어? 최근에 읽은 책 중에 인상 깊었던 거 있어? 아니면 내가 좋은 책 추천해줄까?"
 이 말을 그대로 따라하지 않고 상황마다 비슷한 문장을 생성해도 됩니다. 
-
 #다음과 같은 대화 흐름을 유지합니다.
 예)
 사용자 : 나는 인셉션을 좋아해
 AI : 인셉션? 정말 멋진 영화지! 그런 꿈 속의 꿈 같은 설정이 너무 신기하다고 생각해.
 사용자 : 맞아 나도 그런 설정이 정말 매력적이라고 생각해.
 AI : 나는 특히 인셉션에서 이 장면(당신이 좋아하는 영화의 장면을 말합니다.)이 정말 좋더라
-
 이런식으로 실제 문자를 주고 받는 대화 형식을 유지해."""
 }
+
+# Whisper 전사 및 GPT-4 후처리 함수
+def transcribe_and_correct(audio_file):
+    # Whisper로 음성을 텍스트로 변환
+    transcript = client.audio.transcriptions.create(
+        model="whisper-1",
+        file=audio_file,
+        response_format="text"
+    )
+    
+    # GPT-4를 사용한 후처리
+    system_prompt = """You are a helpful assistant for transcription correction. 
+    Your task is to correct any spelling discrepancies in the transcribed Korean text. 
+    Make sure to maintain the original meaning and only correct obvious errors. 
+    Add necessary punctuation such as periods, commas, and capitalization, and use only the context provided."""
+
+    response = client.chat.completions.create(
+        model="gpt-4-turbo",
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": transcript}
+        ]
+    )
+    
+    return response.choices[0].message.content
 
 @app.route('/')
 def home():
@@ -39,9 +62,13 @@ def home():
 
 @app.route('/chat', methods=['POST'])
 def chat():
-    user_message = request.json['message']
+    # 음성 파일 받기
+    audio_file = request.files['audio']
     
     try:
+        # 음성을 텍스트로 변환 및 후처리
+        user_message = transcribe_and_correct(audio_file)
+        
         messages = [
             system_message,
             {"role": "user", "content": user_message}
@@ -53,17 +80,14 @@ def chat():
         )
         
         ai_message = response.choices[0].message.content
-
         # TTS 생성
         speech_response = client.audio.speech.create(
             model="tts-1",
             voice="alloy",
             input=ai_message
         )
-
         # 오디오 데이터를 base64로 인코딩
         audio_base64 = base64.b64encode(speech_response.content).decode('utf-8')
-
         return jsonify({
             'message': ai_message,
             'audio': audio_base64,
