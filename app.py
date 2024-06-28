@@ -31,44 +31,15 @@ AI : 나는 특히 인셉션에서 이 장면(당신이 좋아하는 영화의 �
 이런식으로 실제 문자를 주고 받는 대화 형식을 유지해."""
 }
 
-# Whisper 전사 및 GPT-4 후처리 함수
-def transcribe_and_correct(audio_file):
-    # Whisper로 음성을 텍스트로 변환
-    transcript = client.audio.transcriptions.create(
-        model="whisper-1",
-        file=audio_file,
-        response_format="text"
-    )
-    
-    # GPT-4를 사용한 후처리
-    system_prompt = """You are a helpful assistant for transcription correction. 
-    Your task is to correct any spelling discrepancies in the transcribed Korean text. 
-    Make sure to maintain the original meaning and only correct obvious errors. 
-    Add necessary punctuation such as periods, commas, and capitalization, and use only the context provided."""
-
-    response = client.chat.completions.create(
-        model="gpt-4-turbo",
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": transcript}
-        ]
-    )
-    
-    return response.choices[0].message.content
-
 @app.route('/')
 def home():
     return render_template('index.html')
 
 @app.route('/chat', methods=['POST'])
 def chat():
-    # 음성 파일 받기
-    audio_file = request.files['audio']
+    user_message = request.json['message']
     
     try:
-        # 음성을 텍스트로 변환 및 후처리
-        user_message = transcribe_and_correct(audio_file)
-        
         messages = [
             system_message,
             {"role": "user", "content": user_message}
@@ -80,14 +51,17 @@ def chat():
         )
         
         ai_message = response.choices[0].message.content
+        
         # TTS 생성
         speech_response = client.audio.speech.create(
             model="tts-1",
             voice="alloy",
             input=ai_message
         )
+        
         # 오디오 데이터를 base64로 인코딩
         audio_base64 = base64.b64encode(speech_response.content).decode('utf-8')
+        
         return jsonify({
             'message': ai_message,
             'audio': audio_base64,
