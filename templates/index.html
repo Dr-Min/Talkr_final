@@ -301,260 +301,289 @@
 
     <script>
       document.addEventListener("DOMContentLoaded", function () {
-        const chatContainer = document.getElementById("chat-container");
-        const userInput = document.getElementById("user-input");
-        const sendBtn = document.getElementById("send-btn");
-        const voiceBtn = document.getElementById("voice-btn");
+  const chatContainer = document.getElementById("chat-container");
+  const userInput = document.getElementById("user-input");
+  const sendBtn = document.getElementById("send-btn");
+  const voiceBtn = document.getElementById("voice-btn");
 
-        let recognition;
-        let isListening = false;
-        let currentAudio = null;
+  let recognition;
+  let isListening = false;
+  let currentAudio = null;
+  let silenceTimer;
+  let hasSpeechStarted = false;
+  const silenceThreshold = 1500; // 1.5초 동안 말하지 않으면 녹음 중지
 
-        function setupSpeechRecognition() {
-          recognition = new (window.SpeechRecognition ||
-            window.webkitSpeechRecognition)();
-          recognition.lang = "ko-KR";
-          recognition.interimResults = true;
-          recognition.continuous = false;
+  function setupSpeechRecognition() {
+    recognition = new (window.SpeechRecognition ||
+      window.webkitSpeechRecognition)();
+    recognition.lang = "ko-KR";
+    recognition.interimResults = true;
+    recognition.continuous = true;
 
-          recognition.onresult = function (event) {
-            const result = event.results[event.results.length - 1];
-            userInput.value = result[0].transcript;
-            if (result.isFinal) {
-              sendMessage(userInput.value.trim());
-              stopListening();
-            }
-          };
+    recognition.onstart = function() {
+      console.log("음성 인식이 시작되었습니다.");
+    };
 
-          recognition.onend = function () {
-            if (isListening) {
-              recognition.start();
-            } else {
-              voiceBtn.classList.remove("active");
-            }
-          };
+    recognition.onspeechstart = function() {
+      console.log("음성이 감지되었습니다.");
+      hasSpeechStarted = true;
+    };
 
-          recognition.onerror = function (event) {
-            console.error("Speech recognition error", event.error);
-            stopListening();
-            addMessage(
-              "음성 인식 중 오류가 발생했습니다. 다시 시도해 주세요.",
-              false
-            );
-          };
-        }
-
-        function startListening() {
-          if (currentAudio) {
-            currentAudio.pause();
-            currentAudio = null;
-          }
-          if (!recognition) {
-            setupSpeechRecognition();
-          }
-          isListening = true;
-          voiceBtn.classList.add("active");
-          recognition.start();
-        }
-
-        function stopListening() {
-          isListening = false;
-          voiceBtn.classList.remove("active");
-          if (recognition) {
-            recognition.stop();
-          }
-        }
-
-        function addMessage(message, isUser, audioData) {
-          const messageDiv = document.createElement("div");
-          messageDiv.className = `message ${
-            isUser ? "user-message" : "bot-message"
-          }`;
-
-          const messageBubble = document.createElement("div");
-          messageBubble.className = "message-bubble";
-          messageBubble.textContent = message;
-
-          messageDiv.appendChild(messageBubble);
-
-          if (!isUser) {
-            const translateBtn = document.createElement("button");
-            translateBtn.className = "translate-btn";
-            translateBtn.textContent = "Translate";
-            translateBtn.onclick = function () {
-              translateMessage(message, messageDiv);
-            };
-            messageDiv.appendChild(translateBtn);
-          }
-
-          chatContainer.appendChild(messageDiv);
-
-          if (!isUser && audioData) {
-            currentAudio = new Audio("data:audio/mp3;base64," + audioData);
-            currentAudio.play().catch((error) => {
-              console.error("Error playing audio:", error);
-              addMessage("오디오 재생 중 오류가 발생했습니다.", false);
-            });
-            currentAudio.onended = function () {
-              currentAudio = null;
-              voiceBtn.classList.remove("active");
-            };
-          }
-
-          chatContainer.scrollTop = chatContainer.scrollHeight;
-        }
-
-        function addLoadingAnimation() {
-          const messageDiv = document.createElement("div");
-          messageDiv.className = "message bot-message";
-
-          const loadingDiv = document.createElement("div");
-          loadingDiv.className = "message-bubble loading";
-          loadingDiv.innerHTML = `
-            <div class="loading-dots">
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
-          `;
-          messageDiv.appendChild(loadingDiv);
-          chatContainer.appendChild(messageDiv);
-          chatContainer.scrollTop = chatContainer.scrollHeight;
-          return messageDiv;
-        }
-
-        function removeLoadingAnimation(loadingDiv) {
-          chatContainer.removeChild(loadingDiv);
-        }
-
-        function addTranslationLoadingAnimation(container) {
-          const loadingDiv = document.createElement("div");
-          loadingDiv.className = "loading-animation";
-          loadingDiv.innerHTML = `
-            <div class="loading-spinner translate">
-              <div class="spinner-circle"></div>
-              <div class="spinner-circle-inner"></div>
-            </div>
-          `;
-          container.appendChild(loadingDiv);
-          container.scrollTop = container.scrollHeight;
-          return loadingDiv;
-        }
-
-        function removeTranslationLoadingAnimation(loadingDiv) {
-          if (loadingDiv && loadingDiv.parentNode) {
-            loadingDiv.parentNode.removeChild(loadingDiv);
-          }
-        }
-
-        function translateMessage(message, messageDiv) {
-          const existingTranslation = messageDiv.querySelector(".translation");
-          if (existingTranslation) {
-            existingTranslation.style.display =
-              existingTranslation.style.display === "none" ? "block" : "none";
-            return;
-          }
-
-          const loadingDiv = addTranslationLoadingAnimation(messageDiv);
-
-          fetch("/translate", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ text: message }),
-          })
-            .then((response) => {
-              if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-              }
-              return response.json();
-            })
-            .then((data) => {
-              if (data.translation) {
-                const translationDiv = document.createElement("div");
-                translationDiv.className = "translation";
-                translationDiv.textContent = data.translation;
-                messageDiv.appendChild(translationDiv);
-                translationDiv.style.display = "block";
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-              } else {
-                throw new Error("번역 데이터가 없습니다.");
-              }
-            })
-            .catch((error) => {
-              console.error("Translation error:", error);
-              addMessage(
-                "번역 중 오류가 발생했습니다. 다시 시도해 주세요.",
-                false
-              );
-            })
-            .finally(() => {
-              removeTranslationLoadingAnimation(loadingDiv);
-            });
-        }
-
-        function sendMessage(message) {
-          if (message) {
-            addMessage(message, true);
-            userInput.value = "";
-
-            const loadingDiv = addLoadingAnimation();
-
-            fetch("/chat", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ message: message }),
-            })
-              .then((response) => {
-                if (!response.ok) {
-                  throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-              })
-              .then((data) => {
-                removeLoadingAnimation(loadingDiv);
-                if (data.success) {
-                  addMessage(data.message, false, data.audio);
-                } else {
-                  throw new Error("서버에서 오류 응답을 받았습니다.");
-                }
-              })
-              .catch((error) => {
-                removeLoadingAnimation(loadingDiv);
-                console.error("Error:", error);
-                addMessage(
-                  "네트워크 오류가 발생했습니다. 다시 시도해 주세요.",
-                  false
-                );
-              });
-          }
-        }
-
-        sendBtn.addEventListener("click", () =>
-          sendMessage(userInput.value.trim())
-        );
-
-        userInput.addEventListener("keypress", function (e) {
-          if (e.key === "Enter") {
+    recognition.onresult = function (event) {
+      if (!hasSpeechStarted) return;
+      
+      clearTimeout(silenceTimer);
+      const result = event.results[event.results.length - 1];
+      userInput.value = result[0].transcript;
+      if (result.isFinal) {
+        sendMessage(userInput.value.trim());
+        stopListening();
+      } else {
+        silenceTimer = setTimeout(() => {
+          if (isListening) {
             sendMessage(userInput.value.trim());
-          }
-        });
-
-        voiceBtn.addEventListener("click", function () {
-          if (currentAudio) {
-            currentAudio.pause();
-            currentAudio = null;
-            voiceBtn.classList.remove("active");
-          } else if (isListening) {
             stopListening();
-          } else {
-            startListening();
           }
-        });
+        }, silenceThreshold);
+      }
+    };
+
+    recognition.onend = function () {
+      if (isListening && !hasSpeechStarted) {
+        console.log("음성이 감지되지 않아 재시작합니다.");
+        recognition.start();
+      } else {
+        voiceBtn.classList.remove("active");
+        isListening = false;
+        hasSpeechStarted = false;
+      }
+    };
+
+    recognition.onerror = function (event) {
+      console.error("Speech recognition error", event.error);
+      if (event.error === 'no-speech') {
+        console.log("음성이 감지되지 않았습니다. 다시 시도해주세요.");
+      } else {
+        stopListening();
+        addMessage("음성 인식 중 오류가 발생했습니다. 다시 시도해 주세요.", false);
+      }
+    };
+  }
+
+  function startListening() {
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio = null;
+    }
+    if (!recognition) {
+      setupSpeechRecognition();
+    }
+    isListening = true;
+    hasSpeechStarted = false;
+    voiceBtn.classList.add("active");
+    recognition.start();
+  }
+
+  function stopListening() {
+    isListening = false;
+    hasSpeechStarted = false;
+    voiceBtn.classList.remove("active");
+    if (recognition) {
+      recognition.stop();
+    }
+    clearTimeout(silenceTimer);
+  }
+
+  function addMessage(message, isUser, audioData) {
+    const messageDiv = document.createElement("div");
+    messageDiv.className = `message ${
+      isUser ? "user-message" : "bot-message"
+    }`;
+
+    const messageBubble = document.createElement("div");
+    messageBubble.className = "message-bubble";
+    messageBubble.textContent = message;
+
+    messageDiv.appendChild(messageBubble);
+
+    if (!isUser) {
+      const translateBtn = document.createElement("button");
+      translateBtn.className = "translate-btn";
+      translateBtn.textContent = "Translate";
+      translateBtn.onclick = function () {
+        translateMessage(message, messageDiv);
+      };
+      messageDiv.appendChild(translateBtn);
+    }
+
+    chatContainer.appendChild(messageDiv);
+
+    if (!isUser && audioData) {
+      currentAudio = new Audio("data:audio/mp3;base64," + audioData);
+      currentAudio.play().catch((error) => {
+        console.error("Error playing audio:", error);
+        addMessage("오디오 재생 중 오류가 발생했습니다.", false);
       });
+      currentAudio.onended = function () {
+        currentAudio = null;
+        voiceBtn.classList.remove("active");
+      };
+    }
+
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+  }
+
+  function addLoadingAnimation() {
+    const messageDiv = document.createElement("div");
+    messageDiv.className = "message bot-message";
+
+    const loadingDiv = document.createElement("div");
+    loadingDiv.className = "message-bubble loading";
+    loadingDiv.innerHTML = `
+      <div class="loading-dots">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+    `;
+    messageDiv.appendChild(loadingDiv);
+    chatContainer.appendChild(messageDiv);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+    return messageDiv;
+  }
+
+  function removeLoadingAnimation(loadingDiv) {
+    chatContainer.removeChild(loadingDiv);
+  }
+
+  function addTranslationLoadingAnimation(container) {
+    const loadingDiv = document.createElement("div");
+    loadingDiv.className = "loading-animation";
+    loadingDiv.innerHTML = `
+      <div class="loading-spinner translate">
+        <div class="spinner-circle"></div>
+        <div class="spinner-circle-inner"></div>
+      </div>
+    `;
+    container.appendChild(loadingDiv);
+    container.scrollTop = container.scrollHeight;
+    return loadingDiv;
+  }
+
+  function removeTranslationLoadingAnimation(loadingDiv) {
+    if (loadingDiv && loadingDiv.parentNode) {
+      loadingDiv.parentNode.removeChild(loadingDiv);
+    }
+  }
+
+  function translateMessage(message, messageDiv) {
+    const existingTranslation = messageDiv.querySelector(".translation");
+    if (existingTranslation) {
+      existingTranslation.style.display =
+        existingTranslation.style.display === "none" ? "block" : "none";
+      return;
+    }
+
+    const loadingDiv = addTranslationLoadingAnimation(messageDiv);
+
+    fetch("/translate", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ text: message }),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        if (data.translation) {
+          const translationDiv = document.createElement("div");
+          translationDiv.className = "translation";
+          translationDiv.textContent = data.translation;
+          messageDiv.appendChild(translationDiv);
+          translationDiv.style.display = "block";
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+        } else {
+          throw new Error("번역 데이터가 없습니다.");
+        }
+      })
+      .catch((error) => {
+        console.error("Translation error:", error);
+        addMessage(
+          "번역 중 오류가 발생했습니다. 다시 시도해 주세요.",
+          false
+        );
+      })
+      .finally(() => {
+        removeTranslationLoadingAnimation(loadingDiv);
+      });
+  }
+
+  function sendMessage(message) {
+    if (message) {
+      addMessage(message, true);
+      userInput.value = "";
+
+      const loadingDiv = addLoadingAnimation();
+
+      fetch("/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ message: message }),
+      })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then((data) => {
+          removeLoadingAnimation(loadingDiv);
+          if (data.success) {
+            addMessage(data.message, false, data.audio);
+          } else {
+            throw new Error("서버에서 오류 응답을 받았습니다.");
+          }
+        })
+        .catch((error) => {
+          removeLoadingAnimation(loadingDiv);
+          console.error("Error:", error);
+          addMessage(
+            "네트워크 오류가 발생했습니다. 다시 시도해 주세요.",
+            false
+          );
+        });
+    }
+  }
+
+  sendBtn.addEventListener("click", () =>
+    sendMessage(userInput.value.trim())
+  );
+
+  userInput.addEventListener("keypress", function (e) {
+    if (e.key === "Enter") {
+      sendMessage(userInput.value.trim());
+    }
+  });
+
+  voiceBtn.addEventListener("click", function () {
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio = null;
+      voiceBtn.classList.remove("active");
+    } else if (isListening) {
+      stopListening();
+    } else {
+      startListening();
+    }
+  });
+});
     </script>
   </body>
 </html>
