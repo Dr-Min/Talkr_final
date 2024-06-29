@@ -550,8 +550,6 @@ voiceBtn.addEventListener("click", function () {
     chatContainer.appendChild(messageDiv);
 
     if (!isUser && audioData) {
-    isAITalking = true;
-    stopListening(); // AI 발화 시작 시 마이크 비활성화
     currentAudio = new Audio("data:audio/mp3;base64," + audioData);
     currentAudio.play().catch((error) => {
       console.error("Error playing audio:", error);
@@ -569,7 +567,6 @@ voiceBtn.addEventListener("click", function () {
       }
     };
   }
-
 
     chatContainer.scrollTop = chatContainer.scrollHeight;
   }
@@ -645,6 +642,7 @@ voiceBtn.addEventListener("click", function () {
 
     const loadingDiv = addLoadingAnimation();
     isLoading = true;
+    isAITalking = true; // AI 응답 생성 시작부터 발화 완료까지 true로 유지
     stopListening(); // AI 응답을 기다리는 동안 마이크 비활성화
 
     fetch("/chat", {
@@ -664,17 +662,7 @@ voiceBtn.addEventListener("click", function () {
         removeLoadingAnimation(loadingDiv);
         isLoading = false;
         if (data.success) {
-          isAITalking = true;
           addMessage(data.message, false, data.audio);
-          // AI 발화 종료 후 콜백
-          if (currentAudio) {
-            currentAudio.onended = function() {
-              isAITalking = false;
-              if (isAutoMicOn) {
-                startListening();
-              }
-            };
-          }
         } else {
           throw new Error("서버에서 오류 응답을 받았습니다.");
         }
@@ -690,7 +678,7 @@ voiceBtn.addEventListener("click", function () {
         }
       });
   }
-  }
+}
 
   sendBtn.addEventListener("click", () => sendMessage(userInput.value.trim()));
 
