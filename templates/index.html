@@ -363,6 +363,9 @@
   let isAutoMicOn = false;
   const silenceThreshold = 1500;
   let fullTranscript = '';
+  let finalTranscript = '';
+  let interimTranscript = '';
+  
   
 
   function isMobile() {
@@ -384,49 +387,52 @@
     recognition.continuous = true;
 
     recognition.onstart = function() {
-      console.log("음성 인식이 시작되었습니다.");
-      isListening = true;
-      voiceBtn.classList.add("active");
-      fullTranscript = '';
-    };
+  console.log("음성 인식이 시작되었습니다.");
+  isListening = true;
+  voiceBtn.classList.add("active");
+  finalTranscript = ''; // fullTranscript 대신 finalTranscript 초기화
+};
 
-    recognition.onspeechstart = function() {
-      console.log("음성이 감지되었습니다.");
-      hasSpeechStarted = true;
-      clearTimeout(silenceTimer);
-    };
+recognition.onspeechstart = function() {
+  console.log("음성이 감지되었습니다.");
+  hasSpeechStarted = true;
+  clearTimeout(silenceTimer);
+};
 
-    recognition.onresult = function (event) {
-      clearTimeout(silenceTimer);
-      let interimTranscript = '';
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        if (event.results[i].isFinal) {
-          fullTranscript += event.results[i][0].transcript + ' ';
-        } else {
-          interimTranscript += event.results[i][0].transcript;
-        }
-      }
-      userInput.value = fullTranscript + interimTranscript;
-      
-      startSilenceTimer();
-    };
+recognition.onresult = function (event) {
+  clearTimeout(silenceTimer);
+  interimTranscript = '';
+  
+  for (let i = event.resultIndex; i < event.results.length; ++i) {
+    if (event.results[i].isFinal) {
+      finalTranscript += event.results[i][0].transcript + ' ';
+    } else {
+      interimTranscript += event.results[i][0].transcript;
+    }
+  }
+  
+  userInput.value = (finalTranscript + interimTranscript).trim();
+  
+  startSilenceTimer();
+};
 
-    recognition.onspeechend = function() {
-      console.log("음성 입력이 중지되었습니다.");
-      startSilenceTimer();
-    };
+recognition.onspeechend = function() {
+  console.log("음성 입력이 중지되었습니다.");
+  startSilenceTimer();
+};
 
-    recognition.onend = function () {
+recognition.onend = function () {
   console.log("음성 인식이 종료되었습니다.");
   isListening = false;
   hasSpeechStarted = false;
   voiceBtn.classList.remove("active");
   
-  if (fullTranscript.trim() !== '') {
-    sendMessage(fullTranscript.trim());
+  if (finalTranscript.trim() !== '') {
+    sendMessage(finalTranscript.trim());
   }
   
-  fullTranscript = '';
+  finalTranscript = ''; // 메시지를 보낸 후 초기화
+
 
   // Auto Mic가 켜져 있고, AI가 말하지 않고 있으며, 로딩 중이 아닐 때만 자동으로 다시 시작
   if (isAutoMicOn && !isAITalking && !isLoading) {
@@ -434,15 +440,14 @@
   }
 };
 
-    recognition.onerror = function (event) {
-      console.error("Speech recognition error", event.error);
-      if (event.error === 'no-speech') {
-        console.log("음성이 감지되지 않았습니다. 다시 시도해주세요.");
-      } else {
-        addMessage("음성 인식 중 오류가 발생했습니다. 다시 시도해 주세요.", false);
-      }
-      stopListening();
-    };
+recognition.onerror = function (event) {
+  console.error("음성 인식 오류", event.error);
+  // 사용자에게 메시지를 표시하지 않음
+  stopListening();
+  if (isAutoMicOn) {
+    setTimeout(startListening, 1000);
+  }
+};
   }
 
   function startSilenceTimer() {
@@ -550,20 +555,21 @@ voiceBtn.addEventListener("click", function () {
     chatContainer.appendChild(messageDiv);
 
     if (!isUser && audioData) {
+    isAITalking = true;
     currentAudio = new Audio("data:audio/mp3;base64," + audioData);
     currentAudio.play().catch((error) => {
-      console.error("Error playing audio:", error);
-      addMessage("오디오 재생 중 오류가 발생했습니다.", false);
+      console.error("오디오 재생 오류:", error);
+      // 사용자에게 오류 메시지를 표시하지 않음
       isAITalking = false;
       if (isAutoMicOn) {
-        startListening(); // 오류 발생 시 마이크 재활성화
+        startListening();
       }
     });
     currentAudio.onended = function () {
       currentAudio = null;
       isAITalking = false;
       if (isAutoMicOn) {
-        startListening(); // AI 발화 종료 후 자동 마이크 재활성화
+        startListening();
       }
     };
   }
