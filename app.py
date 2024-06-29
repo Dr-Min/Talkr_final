@@ -82,8 +82,20 @@ def chat():
 
 @app.route('/translate', methods=['POST'])
 def translate():
-    # 번역 코드는 변경 없음
-    ...
+    text = request.json['text']
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4-turbo",
+            messages=[
+                {"role": "system", "content": "You are a translator. Translate the given Korean text to English."},
+                {"role": "user", "content": f"Translate this to English: {text}"}
+            ]
+        )
+        translation = response.choices[0].message.content
+        return jsonify({'translation': translation})
+    except Exception as e:
+        print(f"Translation error: {str(e)}")
+        return jsonify({'error': 'Translation failed'}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
