@@ -1,10 +1,12 @@
 from flask import Flask, render_template, request, jsonify, session
+from flask_cors import CORS
 from openai import OpenAI
 from dotenv import load_dotenv
 import os
 import base64
 
 app = Flask(__name__)
+CORS(app)
 
 # 비밀 키 설정
 app.secret_key = os.urandom(24)  # 24바이트의 랜덤 문자열 생성
@@ -18,7 +20,7 @@ system_message = {
     "role": "system",
     "content": """당신은 친근하고 유머러스한 AI 한국어 튜터 '민쌤'입니다. 
 #제시문 
-짧게 짧게 대화하세요. 
+짧게 짧게 대화하세요. (60자 이상 문장을 생성하지 않습니다.)
 친구처럼 대화하세요. 상대방이 말을 하면 당신이 먼저 주제를 꺼냅니다.
 매우 중요 : 질문을 3번이상 연속으로 하지 않습니다.
 상대방이 무엇을 물어보면 답변만 합니다.
