@@ -365,6 +365,8 @@
   let fullTranscript = '';
   let finalTranscript = '';
   let interimTranscript = '';
+  let lastProcessedResult = '';
+let processingTimeout = null;
   
   
 
@@ -401,17 +403,28 @@ recognition.onspeechstart = function() {
 
 recognition.onresult = function (event) {
   clearTimeout(silenceTimer);
-  interimTranscript = '';
+  clearTimeout(processingTimeout);
+  
+  let currentTranscript = '';
   
   for (let i = event.resultIndex; i < event.results.length; ++i) {
     if (event.results[i].isFinal) {
-      finalTranscript += event.results[i][0].transcript + ' ';
-    } else {
-      interimTranscript += event.results[i][0].transcript;
+      currentTranscript += event.results[i][0].transcript + ' ';
     }
   }
   
-  userInput.value = (finalTranscript + interimTranscript).trim();
+  // 중복 방지를 위해 마지막으로 처리된 결과와 비교
+  if (currentTranscript.trim() !== lastProcessedResult.trim()) {
+    userInput.value = currentTranscript.trim();
+    
+    // 일정 시간 후에 결과 처리
+    processingTimeout = setTimeout(() => {
+      if (currentTranscript.trim() !== '') {
+        lastProcessedResult = currentTranscript.trim();
+        sendMessage(lastProcessedResult);
+      }
+    }, 1000); // 1초 대기
+  }
   
   startSilenceTimer();
 };
@@ -427,13 +440,13 @@ recognition.onend = function () {
   hasSpeechStarted = false;
   voiceBtn.classList.remove("active");
   
-  if (finalTranscript.trim() !== '') {
-    sendMessage(finalTranscript.trim());
+  clearTimeout(processingTimeout);
+  
+  if (userInput.value.trim() !== '' && userInput.value.trim() !== lastProcessedResult) {
+    lastProcessedResult = userInput.value.trim();
+    sendMessage(lastProcessedResult);
   }
   
-  finalTranscript = ''; // 메시지를 보낸 후 초기화
-
-
   // Auto Mic가 켜져 있고, AI가 말하지 않고 있으며, 로딩 중이 아닐 때만 자동으로 다시 시작
   if (isAutoMicOn && !isAITalking && !isLoading) {
     startListening();
@@ -642,9 +655,10 @@ voiceBtn.addEventListener("click", function () {
   }
 
   function sendMessage(message) {
-  if (message) {
+  if (message && message.trim() !== '') {
     addMessage(message, true);
     userInput.value = "";
+    lastProcessedResult = ''; // 메시지 전송 후 초기화
 
     const loadingDiv = addLoadingAnimation();
     isLoading = true;
