@@ -299,6 +299,38 @@
   width: 100%;
   margin-bottom: 10px;
 }
+#voice-btn {
+  position: relative;
+  overflow: visible;
+}
+
+.voice-waves {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 120%;
+  height: 120%;
+  border-radius: 50%;
+  background-color: rgba(255, 68, 68, 0.1);
+  opacity: 0;
+  pointer-events: none;
+}
+
+@keyframes voiceWave {
+  0% {
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.5);
+    opacity: 0;
+  }
+}
+
+#voice-btn.voice-active .voice-waves {
+  animation: voiceWave 1s infinite;
+}
       @keyframes spin {
         0% {
           transform: rotate(0deg);
@@ -326,6 +358,7 @@
               />
             </svg>
           </div>
+          <div class="voice-waves"></div>
         </button>
         <div class="text-input-container">
           <input
@@ -392,6 +425,7 @@ let processingTimeout = null;
   console.log("음성 인식이 시작되었습니다.");
   isListening = true;
   voiceBtn.classList.add("active");
+  voiceBtn.classList.add("voice-active");
   finalTranscript = ''; // fullTranscript 대신 finalTranscript 초기화
 };
 
@@ -439,6 +473,7 @@ recognition.onend = function () {
   isListening = false;
   hasSpeechStarted = false;
   voiceBtn.classList.remove("active");
+  voiceBtn.classList.remove("voice-active");
   
   clearTimeout(processingTimeout);
   
